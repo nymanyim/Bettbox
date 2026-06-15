@@ -137,37 +137,38 @@ class _WindowContainerState extends ConsumerState<WindowManager>
   }
 
   @override
-  void onWindowEvent(String eventName) {
-    if (eventName == 'power-suspend') {
-      _wasVpnRunning = globalState.isStart;
-      if (_wasVpnRunning) {
-        commonPrint.log(
-          'System Suspend: VPN is running, stopping to release driver handles...',
-        );
-        globalState.appController.updateStatus(false);
-      } else {
-        commonPrint.log(
-          'System Suspend: VPN is not running, no action needed.',
-        );
-      }
-    } else if (eventName == 'power-resume') {
-      if (_wasVpnRunning) {
-        commonPrint.log(
-          'System Resume: VPN was active before suspend, attempting to restart in 3s...',
-        );
-        _wasVpnRunning = false;
-
-        // 延迟 3 秒启动，等待物理网络驱动就绪
-        Future.delayed(const Duration(seconds: 3), () {
-          if (!globalState.isStart) {
-            commonPrint.log('System Resume: Triggering updateStatus(true)...');
-            globalState.appController.updateStatus(true);
-          }
-        });
-      } else {
-        commonPrint.log('System Resume: Re-syncing VPN status...');
-      }
+  void onPowerSuspend() {
+    _wasVpnRunning = globalState.isStart;
+    if (_wasVpnRunning) {
+      commonPrint.log(
+        'System Suspend: VPN is running, stopping to release driver handles...',
+      );
+      globalState.appController.updateStatus(false);
+    } else {
+      commonPrint.log('System Suspend: VPN is not running, no action needed.');
     }
+    super.onPowerSuspend();
+  }
+
+  @override
+  void onPowerResume() {
+    if (_wasVpnRunning) {
+      commonPrint.log(
+        'System Resume: VPN was active before suspend, attempting to restart in 3s...',
+      );
+      _wasVpnRunning = false;
+
+      // 延迟 3 秒启动，等待物理网络驱动就绪
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!globalState.isStart) {
+          commonPrint.log('System Resume: Triggering updateStatus(true)...');
+          globalState.appController.updateStatus(true);
+        }
+      });
+    } else {
+      commonPrint.log('System Resume: Re-syncing VPN status...');
+    }
+    super.onPowerResume();
   }
 
   @override
