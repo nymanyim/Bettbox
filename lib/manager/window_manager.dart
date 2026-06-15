@@ -25,7 +25,6 @@ class _WindowContainerState extends ConsumerState<WindowManager>
     with WindowListener, WindowExtListener {
   Timer? _renderToggleTimer;
   bool? _pendingRenderResume;
-  bool _wasVpnRunning = false; // 新增：记录休眠前的 VPN 状态
 
   void _scheduleRenderToggle(bool resume) {
     _pendingRenderResume = resume;
@@ -50,19 +49,18 @@ class _WindowContainerState extends ConsumerState<WindowManager>
   @override
   void initState() {
     super.initState();
-    _autoLaunchSub = ref.listenManual(
-      appSettingProvider.select((state) => state.autoLaunch),
-      (prev, next) {
-        if (prev != next) {
-          final smartDelayLaunch = ref
-              .read(appSettingProvider)
-              .smartDelayLaunch;
-          debouncer.call(FunctionTag.autoLaunch, () {
-            autoLaunch?.updateStatus(next, requireNetwork: smartDelayLaunch);
-          });
-        }
-      },
-    );
+    _autoLaunchSub =
+        ref.listenManual(appSettingProvider.select((state) => state.autoLaunch), (
+      prev,
+      next,
+    ) {
+      if (prev != next) {
+        final smartDelayLaunch = ref.read(appSettingProvider).smartDelayLaunch;
+        debouncer.call(FunctionTag.autoLaunch, () {
+          autoLaunch?.updateStatus(next, requireNetwork: smartDelayLaunch);
+        });
+      }
+    });
 
     _smartDelaySub = ref.listenManual(
       appSettingProvider.select((state) => state.smartDelayLaunch),
@@ -134,41 +132,6 @@ class _WindowContainerState extends ConsumerState<WindowManager>
   void onTaskbarCreated() {
     globalState.appController.updateTray(true);
     super.onTaskbarCreated();
-  }
-
-  @override
-  void onPowerSuspend() {
-    _wasVpnRunning = globalState.isStart;
-    if (_wasVpnRunning) {
-      commonPrint.log(
-        'System Suspend: VPN is running, stopping to release driver handles...',
-      );
-      globalState.appController.updateStatus(false);
-    } else {
-      commonPrint.log('System Suspend: VPN is not running, no action needed.');
-    }
-    super.onPowerSuspend();
-  }
-
-  @override
-  void onPowerResume() {
-    if (_wasVpnRunning) {
-      commonPrint.log(
-        'System Resume: VPN was active before suspend, attempting to restart in 3s...',
-      );
-      _wasVpnRunning = false;
-
-      // 延迟 3 秒启动，等待物理网络驱动就绪
-      Future.delayed(const Duration(seconds: 3), () {
-        if (!globalState.isStart) {
-          commonPrint.log('System Resume: Triggering updateStatus(true)...');
-          globalState.appController.updateStatus(true);
-        }
-      });
-    } else {
-      commonPrint.log('System Resume: Re-syncing VPN status...');
-    }
-    super.onPowerResume();
   }
 
   @override
@@ -287,11 +250,13 @@ class _WindowHeaderState extends State<WindowHeader> {
               final alwaysShowTitleBar = ref.watch(
                 vpnSettingProvider.select((state) => state.alwaysShowTitleBar),
               );
-              final showButtons =
-                  !shouldUseHoverEffect || alwaysShowTitleBar || isHovering;
+              final showButtons = !shouldUseHoverEffect || alwaysShowTitleBar || isHovering;
               return Opacity(
                 opacity: showButtons ? 1.0 : 0.0,
-                child: IgnorePointer(ignoring: !showButtons, child: child),
+                child: IgnorePointer(
+                  ignoring: !showButtons,
+                  child: child,
+                ),
               );
             },
             child: Row(
