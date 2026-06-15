@@ -2,13 +2,9 @@
 #define RUNNER_FLUTTER_WINDOW_H_
 
 #include <flutter/dart_project.h>
-#include <flutter/encodable_value.h>
 #include <flutter/flutter_view_controller.h>
-#include <flutter/method_channel.h>
-#include <flutter/standard_method_codec.h>
 
 #include <memory>
-#include <string>
 
 #include "win32_window.h"
 
@@ -33,18 +29,12 @@ class FlutterWindow : public Win32Window {
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
   
-  // Method channel for forwarding power events to Dart via window_manager channel.
-  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>> power_event_channel_;
-
   // Setup app method channel
   void SetupAppMethodChannel();
-
-  // Send a power event to Dart layer.
-  void SendPowerEvent(const std::string& event_name);
   
   // Set window icon
   bool SetWindowIcon(bool use_light_icon);
-
+  
   // Save icon preference
   void SaveIconPreference(bool use_light_icon);
   
